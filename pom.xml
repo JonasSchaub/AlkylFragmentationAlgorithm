@@ -5,12 +5,26 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>de.unijena.cheminf</groupId>
-    <artifactId>Alkyl_fragmentation_algorithm_project</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <artifactId>alkyl</artifactId>
+    <version>0.0.0.0</version>
+    <name>Alkyl Fragmentation Algorithm</name>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.openscience.cdk</groupId>
+            <artifactId>cdk-bundle</artifactId>
+            <version>2.7.1</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+        </dependency>
+    </dependencies>
 
 </project>

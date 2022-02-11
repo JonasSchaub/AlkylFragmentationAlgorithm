@@ -27,12 +27,6 @@ package de.unijena.cheminf.alkyl;
 /**
  *
  */
-public class Main {
-    /**
-     *
-     * @param args
-     */
-    public static void main(String args[]) {
+public class AlkylFragmenter {
 
-    }
 }

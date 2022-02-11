@@ -24,15 +24,18 @@
 
 package de.unijena.cheminf.alkyl;
 
+import org.junit.Test;
+
 /**
  *
  */
-public class Main {
+public class AlkylFragmenterTest {
     /**
      *
-     * @param args
+     * @throws Exception
      */
-    public static void main(String args[]) {
+    @Test
+    public void testMethod() throws Exception {
 
     }
 }
