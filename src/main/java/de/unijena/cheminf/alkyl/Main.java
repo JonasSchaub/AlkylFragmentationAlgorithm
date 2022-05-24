@@ -24,15 +24,15 @@
 
 package de.unijena.cheminf.alkyl;
 
-/**
- *
- */
-public class Main {
-    /**
-     *
-     * @param args
-     */
-    public static void main(String args[]) {
+import org.openscience.cdk.DefaultChemObjectBuilder;
+import org.openscience.cdk.exception.CDKException;
+import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.smiles.SmilesParser;
 
+public class Main {
+    public static void main(String args[]) throws CDKException {
+        SmilesParser sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer mol = sp.parseSmiles("CCCC(CC)(CCCC)CCCC(CCC(C)(C)CCCCC)CCCCC(C)(C)C");
+        AlkylFragmenter fragmenter = new AlkylFragmenter(mol);
     }
 }
