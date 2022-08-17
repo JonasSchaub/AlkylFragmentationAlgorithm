@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2022 Andreas Freitag, Jonas Schaub, Achim Zielesny, Christoph Steinbeck
+ * Copyright (c) 2022 Andreas Freitag, Jonas Schaub, Felix Bänsch, Achim Zielesny, Christoph Steinbeck
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,9 @@ import org.openscience.cdk.smiles.SmilesParser;
 public class Main {
     public static void main(String args[]) throws CDKException {
         SmilesParser sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer mol = sp.parseSmiles("CCCC(CC)(CCCC)CCCC(CCC(C)(C)CCCCC)CCCCC(C)(C)C");
-        AlkylFragmenter fragmenter = new AlkylFragmenter(mol);
+        IAtomContainer mol = sp.parseSmiles("CCCC(CC)(CCC)C(CCCC(C))CCCCCCC");
+        AlkylFragmenter fragmenter = new AlkylFragmenter();
+        fragmenter.setMolecule(mol);
+        fragmenter.startAlkylFragmentation();
     }
 }

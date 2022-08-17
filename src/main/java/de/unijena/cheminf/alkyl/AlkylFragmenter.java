@@ -2,7 +2,7 @@ package de.unijena.cheminf.alkyl;
 /*
  * MIT License
  *
- * Copyright (c) 2022 Andreas Freitag, Jonas Schaub, Achim Zielesny, Christoph Steinbeck
+ * Copyright (c) 2022 Andreas Freitag, Jonas Schaub, Felix Bänsch, Achim Zielesny, Christoph Steinbeck
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,40 +23,48 @@ package de.unijena.cheminf.alkyl;
  * SOFTWARE.
  */
 
-import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.interfaces.IAtomContainer;
-import org.openscience.cdk.interfaces.IBond;
+import org.openscience.cdk.interfaces.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class AlkylFragmenter {
     private IAtomContainer mol;
-    private List<List<Integer>> ccFragments;    //ccFragments - main and side branch fragments
-    private List<List<Integer>> tqFragments;    //tqFragments - tertiary and quaternary and chain fragments
 
+    public AlkylFragmenter(){}
 
-    public AlkylFragmenter (IAtomContainer m) throws CDKException {
+    public void setMolecule(IAtomContainer m) {
         mol = m;
-        System.out.println(cutChains(mol));
-
+    }
+    public void startAlkylFragmentation() {
+        List<List<Integer>> bc = branchCutter(mol);
+        System.out.println(bc);
+        System.out.println(chainCutter(mol, bc, 5, 0, false));
     }
 
-    public List<Integer> longestChainIndices (IAtomContainer molecule) {
-        return cutChains(molecule).get(0);
+    private List<IAtomContainer> genAtomContainer(List<List<Integer>> indicesList) throws CloneNotSupportedException {
+        List<IAtomContainer> molList = new ArrayList<>();
+        for (List<Integer> il : indicesList) {
+            IAtomContainer molecule = mol.clone();
+            for (int i=molecule.getAtomCount()-1; i<=0; i++) {
+                if (!il.contains(i)) {
+                    molecule.removeAtom(i);
+                }
+            }
+            molList.add(molecule.clone());
+        }
+        return molList;
     }
 
-    public List<List<Integer>> cutChains (IAtomContainer molecule) {
-        /*
-        This method determines the longest chain in a hydrocarbon molecule by following chain paths starting with the
-        terminal carbons atom by atom all at the same time. When any path reaches a fork it will become a side
-        chain and its list will be deleted. This way the two longest paths will never reach a fork, but will meet each
-        other in the middle.
-         */
+    /**
+     * This method separates the shorter branches from the longer ones and returns a list of linear molecule fragments
+     * in shape of lists of atom indices.
+     * @param molecule
+     * @return
+     */
+    public List<List<Integer>> branchCutter (IAtomContainer molecule) {
         List<List<Integer>> chains = new ArrayList<>();
-
-        List<List<Integer>> chainLists = new ArrayList<>();
+        List<List<Integer>> chainList = new ArrayList<>();
         List<Integer>[] connections = new ArrayList[molecule.getAtomCount()];
         for (int i=0; i<connections.length; i++) {
             connections[i] = new ArrayList<>();
@@ -67,44 +75,152 @@ public class AlkylFragmenter {
         }
         for (int i=0; i<connections.length; i++) {
             if (connections[i].size() == 1) {
-                chainLists.add(new ArrayList<>());
-                chainLists.get(chainLists.size()-1).add(i);
+                chainList.add(new ArrayList<>());
+                chainList.get(chainList.size()-1).add(i);
             }
         }
-
         boolean searching = true;
         while (searching) {
-            int cli = 0;
-            while (cli < chainLists.size()) {
-                List<Integer> cl = chainLists.get(cli);
-                if (connections[cl.get(cl.size()-1)].size() > 0) {
-                    cl.add(connections[cl.get(cl.size() - 1)].get(0));
-                    connections[cl.get(cl.size() - 1)].remove((Integer) cl.get(cl.size() - 2));
-                    if (connections[cl.get(cl.size() - 1)].size() == 0) {
-                        if (Objects.equals(chains.get(0).get(chains.get(0).size() - 1), cl.get(cl.size() - 1))) {
-                            searching = false;
-                        }
-                        cl.remove(cl.size() - 1);
-                        chains.add(0, cl);
-                        chainLists.remove(cl);
-                        cli--;
-                    }
-                    if (connections[cl.get(cl.size() - 1)].size() > 1){
-                        cl.remove(cl.size()-1);
-                        chains.add(cl);
-                        chainLists.remove(cl);
-                        cli--;
+            int chainListIndex = 0;
+            while (chainListIndex < chainList.size()) {
+                List<Integer> chainListAtIndex = chainList.get(chainListIndex);
+                if (connections[chainListAtIndex.get(chainListAtIndex.size() - 1)].size() > 0 &&
+                        chainList.size() > 1) {
+                    chainListAtIndex.add(connections[chainListAtIndex.get(chainListAtIndex.size() - 1)].get(0));
+                    connections[chainListAtIndex.get(chainListAtIndex.size() - 1)]
+                            .remove(chainListAtIndex.get(chainListAtIndex.size() - 2));
+                    if (connections[chainListAtIndex.get(chainListAtIndex.size() - 1)].size() > 1) {
+                        chains.add(reverseList(chainListAtIndex));
+                        chainList.remove(chainListAtIndex);
+                        chainListIndex--;
                     }
                 } else {
-                    chains.get(0).addAll(cl);
-                    chainLists.remove(cl);
-                    cli--;
+                    if (chainList.size() == 2) {
+                        chains.add(chainList.get(0));
+                        chainList.remove(0);
+                    }
+                    chains.get(chains.size() - 1).remove(chains.get(chains.size() -1).size() - 1);
+                    chains.get(chains.size() - 1).addAll(reverseList(chainList.get(0)));
+                    chainList.remove(0);
+                    chainListIndex--;
                     searching = false;
                 }
-                cli++;
+                chainListIndex++;
             }
         }
         return chains;
     }
 
+    private List<Integer> reverseList(List<Integer> list) {
+        List<Integer> revList = new ArrayList<>();
+        for (int li : list) {
+            revList.add(0,li);
+        }
+        return revList;
+    }
+
+    /**
+     * This method cuts linear molecule fragments into chains of equal length.
+     * @param molecule
+     * @param chains
+     * @param minCut
+     * @param maxCut
+     * @param preserveCarbon
+     * @return
+     */
+    public List<List<Integer>> chainCutter(IAtomContainer molecule, List<List<Integer>> chains,
+                                           int minCut, int maxCut, boolean preserveCarbon) {
+        List<List<Integer>> rest = new ArrayList<>();
+        int chainsIndex = 0;
+        while (chainsIndex < chains.size() && chains.size() > 0) {
+            List<Integer> chainsAtIndex = chains.get(chainsIndex);
+            int index = 1;
+            int branchRest = 0;
+            while (index-branchRest < 2 && index != chains.size()-1) {
+                if (index == 1 && preserveCarbon) branchRest++;
+                else if (molecule.getBond(molecule.getAtom(chainsAtIndex.get(branchRest)),
+                        molecule.getAtom(chainsAtIndex.get(index))).getOrder() != IBond.Order.SINGLE) branchRest++;
+                index++;
+            }
+            if (index-branchRest > 0) {
+                if (chainsAtIndex.size() - branchRest > minCut) {
+                    if (branchRest > 0) rest.add(chainsAtIndex.subList(0, branchRest));
+                    chainsAtIndex = chainsAtIndex.subList(branchRest, chainsAtIndex.size());
+                    if (chainsIndex < chains.size()-1) chainsAtIndex.remove(0);
+                    int shift = 0;
+                    index = 0;
+                    if (maxCut > 0) {
+                        while ((index+1) * maxCut + shift <= chainsAtIndex.size()) {
+                            int shift0 = shift;
+                            boolean reverseShift = false;
+                            if ((index + 1) * maxCut + shift + 1 < chainsAtIndex.size()) {
+                                while (molecule.getBond(molecule.getAtom(chainsAtIndex.get((index + 1) * maxCut + shift)),
+                                        molecule.getAtom(chainsAtIndex.get((index + 1) * maxCut + shift + 1))).getOrder() != IBond.Order.SINGLE &&
+                                        (index + 1) * maxCut + shift < chainsAtIndex.size()) {
+                                    if (shift0 - shift < maxCut - minCut && !reverseShift) shift--;
+                                    if (shift0 - shift >= maxCut - minCut && !reverseShift) {
+                                        reverseShift = true;
+                                        shift = shift0;
+                                    }
+                                    if (reverseShift) shift++;
+                                }
+                            }
+                            chains.add(0, chainsAtIndex.subList(index*maxCut+shift, (index+1)*maxCut+shift));
+                            chainsIndex++;
+                            index++;
+                        }
+                        if (chainsAtIndex.size()/maxCut < (float) chainsAtIndex.size()/maxCut)
+                            chains.add(0, chainsAtIndex.subList(index*maxCut+shift, chainsAtIndex.size()));
+                        chains.remove(chainsAtIndex);
+
+                    } else {
+                        while ((index + 1) * minCut + shift <= chainsAtIndex.size()) {
+                            if ((index + 1) * minCut + shift + 1 < chainsAtIndex.size()) {
+                                while (molecule.getBond(molecule.getAtom(chainsAtIndex.get((index + 1) * minCut + shift)),
+                                        molecule.getAtom(chainsAtIndex.get((index + 1) * minCut + shift + 1))).getOrder() != IBond.Order.SINGLE &&
+                                        (index + 1) * minCut + shift < chainsAtIndex.size()) {
+                                    shift++;
+                                }
+                            }
+                            chains.add(0, chainsAtIndex.subList(index * minCut + shift, (index + 1) * minCut + shift));
+                            chainsIndex++;
+                            index++;
+                        }
+                        if (chainsAtIndex.size()/minCut < (float) chainsAtIndex.size()/minCut)
+                            rest.add(chainsAtIndex.subList(index*minCut+shift-1, chainsAtIndex.size()));
+                        chains.remove(chainsAtIndex);
+                        chainsIndex--;
+                    }
+                } else {
+                    rest.add(chainsAtIndex);
+                    chains.remove(chainsAtIndex);
+                    chainsIndex--;
+                }
+            }
+            chainsIndex++;
+        }
+        while (rest.size() > 0) {
+            chainsIndex = 0;
+            while (chainsIndex < chains.size()) {
+                List<Integer> chainsAtIndex = chains.get(chainsIndex);
+                int restIndex = 0;
+                boolean isCombined = false;
+                while (restIndex < rest.size() && !isCombined) {
+                    List<Integer> restAtIndex = rest.get(restIndex);
+                    if (chainsAtIndex.contains(restAtIndex.get(0))) {
+                        List<Integer> combine = new ArrayList<>(chainsAtIndex);
+                        combine.addAll(restAtIndex.subList(1, restAtIndex.size()));
+                        chains.add(combine);
+                        chains.remove(chainsAtIndex);
+                        rest.remove(restAtIndex);
+                        restIndex++;
+                        isCombined = true;
+                    }
+                    restIndex++;
+                }
+                if (!isCombined) chainsIndex++;
+            }
+        }
+        return chains;
+    }
 }
