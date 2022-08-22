@@ -29,47 +29,52 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AlkylFragmenter {
-    private IAtomContainer mol;
+    private IAtomContainer molecule;
+    private int minCut;
+    private int maxCut;
+    private boolean preserveCarbon;
 
     public AlkylFragmenter(){}
 
     public void setMolecule(IAtomContainer m) {
-        mol = m;
+        molecule = m;
     }
-    public void startAlkylFragmentation() {
-        List<List<Integer>> bc = branchCutter(mol);
+    public List<List<Integer>> startAlkylFragmentation(int min, int max, boolean pc) {
+        this.minCut = min;
+        this.maxCut = max;
+        this.preserveCarbon = pc;
+        List<List<Integer>> bc = branchCutter();
         System.out.println(bc);
-        System.out.println(chainCutter(mol, bc, 5, 0, false));
+        return chainCutter(bc);
     }
 
     private List<IAtomContainer> genAtomContainer(List<List<Integer>> indicesList) throws CloneNotSupportedException {
         List<IAtomContainer> molList = new ArrayList<>();
         for (List<Integer> il : indicesList) {
-            IAtomContainer molecule = mol.clone();
-            for (int i=molecule.getAtomCount()-1; i<=0; i++) {
+            IAtomContainer mol = molecule.clone();
+            for (int i=mol.getAtomCount()-1; i<=0; i++) {
                 if (!il.contains(i)) {
-                    molecule.removeAtom(i);
+                    mol.removeAtom(i);
                 }
             }
-            molList.add(molecule.clone());
+            molList.add(mol.clone());
         }
         return molList;
     }
 
     /**
-     * This method separates the shorter branches from the longer ones and returns a list of linear molecule fragments
+     * This method separates the shorter branches from the longer ones and returns a list of linear this.molecule fragments
      * in shape of lists of atom indices.
-     * @param molecule
      * @return
      */
-    public List<List<Integer>> branchCutter (IAtomContainer molecule) {
+    public List<List<Integer>> branchCutter () {
         List<List<Integer>> chains = new ArrayList<>();
         List<List<Integer>> chainList = new ArrayList<>();
-        List<Integer>[] connections = new ArrayList[molecule.getAtomCount()];
+        List<Integer>[] connections = new ArrayList[this.molecule.getAtomCount()];
         for (int i=0; i<connections.length; i++) {
             connections[i] = new ArrayList<>();
         }
-        for (IBond bond : molecule.bonds()) {
+        for (IBond bond : this.molecule.bonds()) {
             connections[bond.getAtom(0).getIndex()].add(bond.getAtom(1).getIndex());
             connections[bond.getAtom(1).getIndex()].add(bond.getAtom(0).getIndex());
         }
@@ -121,15 +126,17 @@ public class AlkylFragmenter {
 
     /**
      * This method cuts linear molecule fragments into chains of equal length.
-     * @param molecule
      * @param chains
-     * @param minCut
-     * @param maxCut
-     * @param preserveCarbon
      * @return
      */
-    public List<List<Integer>> chainCutter(IAtomContainer molecule, List<List<Integer>> chains,
-                                           int minCut, int maxCut, boolean preserveCarbon) {
+    public List<List<Integer>> chainCutter(List<List<Integer>> chains) {
+        /*
+        This method filters out all chain fragments that are smaller than minCut and stores them in the "rest" list.
+        Likewise, it stores
+        The first integer in each of these lists is the index of the atom that the chain is connected to.
+
+        At first the method iterates through the chain list that consists of linear chain fragments.
+         */
         List<List<Integer>> rest = new ArrayList<>();
         int chainsIndex = 0;
         while (chainsIndex < chains.size() && chains.size() > 0) {
@@ -138,56 +145,56 @@ public class AlkylFragmenter {
             int branchRest = 0;
             while (index-branchRest < 2 && index != chains.size()-1) {
                 if (index == 1 && preserveCarbon) branchRest++;
-                else if (molecule.getBond(molecule.getAtom(chainsAtIndex.get(branchRest)),
-                        molecule.getAtom(chainsAtIndex.get(index))).getOrder() != IBond.Order.SINGLE) branchRest++;
+                else if (this.molecule.getBond(this.molecule.getAtom(chainsAtIndex.get(branchRest)),
+                        this.molecule.getAtom(chainsAtIndex.get(index))).getOrder() != IBond.Order.SINGLE) branchRest++;
                 index++;
             }
             if (index-branchRest > 0) {
-                if (chainsAtIndex.size() - branchRest > minCut) {
+                if (chainsAtIndex.size() - branchRest > this.minCut) {
                     if (branchRest > 0) rest.add(chainsAtIndex.subList(0, branchRest));
-                    chainsAtIndex = chainsAtIndex.subList(branchRest, chainsAtIndex.size());
                     if (chainsIndex < chains.size()-1) chainsAtIndex.remove(0);
+                    chainsAtIndex = chainsAtIndex.subList(branchRest, chainsAtIndex.size());
                     int shift = 0;
                     index = 0;
-                    if (maxCut > 0) {
-                        while ((index+1) * maxCut + shift <= chainsAtIndex.size()) {
+                    if (this.maxCut > 0) {
+                        while ((index+1) * this.maxCut + shift <= chainsAtIndex.size()) {
                             int shift0 = shift;
                             boolean reverseShift = false;
-                            if ((index + 1) * maxCut + shift + 1 < chainsAtIndex.size()) {
-                                while (molecule.getBond(molecule.getAtom(chainsAtIndex.get((index + 1) * maxCut + shift)),
-                                        molecule.getAtom(chainsAtIndex.get((index + 1) * maxCut + shift + 1))).getOrder() != IBond.Order.SINGLE &&
-                                        (index + 1) * maxCut + shift < chainsAtIndex.size()) {
-                                    if (shift0 - shift < maxCut - minCut && !reverseShift) shift--;
-                                    if (shift0 - shift >= maxCut - minCut && !reverseShift) {
+                            if ((index + 1) * this.maxCut + shift + 1 < chainsAtIndex.size()) {
+                                while (this.molecule.getBond(this.molecule.getAtom(chainsAtIndex.get((index + 1) * this.maxCut + shift)),
+                                        this.molecule.getAtom(chainsAtIndex.get((index + 1) * this.maxCut + shift + 1))).getOrder() != IBond.Order.SINGLE &&
+                                        (index + 1) * this.maxCut + shift < chainsAtIndex.size()) {
+                                    if (shift0 - shift < this.maxCut - this.minCut && !reverseShift) shift--;
+                                    if (shift0 - shift >= this.maxCut - this.minCut && !reverseShift) {
                                         reverseShift = true;
                                         shift = shift0;
                                     }
                                     if (reverseShift) shift++;
                                 }
                             }
-                            chains.add(0, chainsAtIndex.subList(index*maxCut+shift, (index+1)*maxCut+shift));
+                            chains.add(0, chainsAtIndex.subList(index*this.maxCut+shift, (index+1)*this.maxCut+shift));
                             chainsIndex++;
                             index++;
                         }
-                        if (chainsAtIndex.size()/maxCut < (float) chainsAtIndex.size()/maxCut)
-                            chains.add(0, chainsAtIndex.subList(index*maxCut+shift, chainsAtIndex.size()));
+                        if (chainsAtIndex.size()/this.maxCut < (float) chainsAtIndex.size()/this.maxCut)
+                            chains.add(0, chainsAtIndex.subList(index*this.maxCut+shift, chainsAtIndex.size()));
                         chains.remove(chainsAtIndex);
 
                     } else {
-                        while ((index + 1) * minCut + shift <= chainsAtIndex.size()) {
-                            if ((index + 1) * minCut + shift + 1 < chainsAtIndex.size()) {
-                                while (molecule.getBond(molecule.getAtom(chainsAtIndex.get((index + 1) * minCut + shift)),
-                                        molecule.getAtom(chainsAtIndex.get((index + 1) * minCut + shift + 1))).getOrder() != IBond.Order.SINGLE &&
-                                        (index + 1) * minCut + shift < chainsAtIndex.size()) {
+                        while ((index + 1) * this.minCut + shift <= chainsAtIndex.size()) {
+                            if ((index + 1) * this.minCut + shift + 1 < chainsAtIndex.size()) {
+                                while (this.molecule.getBond(this.molecule.getAtom(chainsAtIndex.get((index + 1) * this.minCut + shift)),
+                                        this.molecule.getAtom(chainsAtIndex.get((index + 1) * this.minCut + shift + 1))).getOrder() != IBond.Order.SINGLE &&
+                                        (index + 1) * this.minCut + shift < chainsAtIndex.size()) {
                                     shift++;
                                 }
                             }
-                            chains.add(0, chainsAtIndex.subList(index * minCut + shift, (index + 1) * minCut + shift));
+                            chains.add(0, chainsAtIndex.subList(index * this.minCut + shift, (index + 1) * this.minCut + shift));
                             chainsIndex++;
                             index++;
                         }
-                        if (chainsAtIndex.size()/minCut < (float) chainsAtIndex.size()/minCut)
-                            rest.add(chainsAtIndex.subList(index*minCut+shift-1, chainsAtIndex.size()));
+                        if (chainsAtIndex.size()/this.minCut < (float) chainsAtIndex.size()/this.minCut)
+                            rest.add(chainsAtIndex.subList(index*this.minCut+shift-1, chainsAtIndex.size()));
                         chains.remove(chainsAtIndex);
                         chainsIndex--;
                     }
@@ -199,6 +206,7 @@ public class AlkylFragmenter {
             }
             chainsIndex++;
         }
+        System.out.println();
         while (rest.size() > 0) {
             chainsIndex = 0;
             while (chainsIndex < chains.size()) {
