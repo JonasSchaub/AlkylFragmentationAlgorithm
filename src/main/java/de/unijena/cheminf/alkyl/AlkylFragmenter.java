@@ -1,8 +1,7 @@
-package de.unijena.cheminf.alkyl;
 /*
  * MIT License
  *
- * Copyright (c) 2022 Andreas Freitag, Jonas Schaub, Felix Bänsch, Achim Zielesny, Christoph Steinbeck
+ * Copyright (c) 2022 Andreas Freitag, Jonas Schaub, Felix Baensch, Achim Zielesny, Christoph Steinbeck
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +22,9 @@ package de.unijena.cheminf.alkyl;
  * SOFTWARE.
  */
 
-import org.openscience.cdk.interfaces.*;
-
+package de.unijena.cheminf.alkyl;
+import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.interfaces.IBond;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,7 +44,6 @@ public class AlkylFragmenter {
         this.maxCut = max;
         this.preserveCarbon = pc;
         List<List<Integer>> bc = branchCutter();
-        System.out.println(bc);
         return chainCutter(bc);
     }
 
@@ -141,17 +140,20 @@ public class AlkylFragmenter {
         int chainsIndex = 0;
         while (chainsIndex < chains.size() && chains.size() > 0) {
             List<Integer> chainsAtIndex = chains.get(chainsIndex);
+            System.out.println(chains);
+            System.out.println(chainsAtIndex);
             int index = 1;
             int branchRest = 0;
-            while (index-branchRest < 2 && index != chains.size()-1) {
+            while (index-branchRest < 2 && index < chainsAtIndex.size()) {
                 if (index == 1 && preserveCarbon) branchRest++;
                 else if (this.molecule.getBond(this.molecule.getAtom(chainsAtIndex.get(branchRest)),
                         this.molecule.getAtom(chainsAtIndex.get(index))).getOrder() != IBond.Order.SINGLE) branchRest++;
                 index++;
             }
+            System.out.println(branchRest);
             if (index-branchRest > 0) {
                 if (chainsAtIndex.size() - branchRest > this.minCut) {
-                    if (branchRest > 0) rest.add(chainsAtIndex.subList(0, branchRest));
+                    if (branchRest > 0) rest.add(chainsAtIndex.subList(0, branchRest+1));
                     if (chainsIndex < chains.size()-1) chainsAtIndex.remove(0);
                     chainsAtIndex = chainsAtIndex.subList(branchRest, chainsAtIndex.size());
                     int shift = 0;
@@ -189,6 +191,7 @@ public class AlkylFragmenter {
                                     shift++;
                                 }
                             }
+                            System.out.println(chainsAtIndex.subList(index * this.minCut + shift, (index + 1) * this.minCut + shift));
                             chains.add(0, chainsAtIndex.subList(index * this.minCut + shift, (index + 1) * this.minCut + shift));
                             chainsIndex++;
                             index++;
@@ -205,8 +208,12 @@ public class AlkylFragmenter {
                 }
             }
             chainsIndex++;
+            System.out.println(chains);
+            System.out.println("-");
         }
-        System.out.println();
+        System.out.println(chains);
+        System.out.println(rest);
+        System.out.println("mmm");
         while (rest.size() > 0) {
             chainsIndex = 0;
             while (chainsIndex < chains.size()) {

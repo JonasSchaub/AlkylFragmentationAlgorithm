@@ -35,6 +35,6 @@ public class Main {
         IAtomContainer mol = sp.parseSmiles("CCCC(CC)(CCC)C(CCCC(C))CCCCCCC");
         AlkylFragmenter fragmenter = new AlkylFragmenter();
         fragmenter.setMolecule(mol);
-        fragmenter.startAlkylFragmentation(1, 5, false);
+        System.out.println(fragmenter.startAlkylFragmentation(1, 5, false));
     }
 }

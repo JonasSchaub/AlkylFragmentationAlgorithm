@@ -30,8 +30,6 @@ import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.exception.InvalidSmilesException;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.smiles.SmilesParser;
-
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -45,78 +43,66 @@ public class AlkylFragmenterTest {
 
     SmilesParser sp;
     AlkylFragmenter fragmenter;
-    @Test
-    public void testMethod() throws Exception {
-        SmilesParser sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        testMinLength();
-        testMaxLength();
-    }
-
-    public void testMinLength () throws InvalidSmilesException {
-        this.sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer mol1 = sp.parseSmiles("CCCCCCCCCC");
-        IAtomContainer mol2 = sp.parseSmiles("CCCC(CCCCC)CCCCC");
+    public AlkylFragmenterTest () {
+        sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         this.fragmenter = new AlkylFragmenter();
+    }
+    @Test
+    public void testPreserveCarbons () throws InvalidSmilesException {
+        IAtomContainer mol1 = this.sp.parseSmiles("CC(C)(CCC)CC(CC(C)C(C)(C))CCC");
+        this.fragmenter.setMolecule(mol1);
+        List<List<Integer>> actualIndices = this.fragmenter.startAlkylFragmentation(1,0,true);
+        List<List<Integer>> expectedIndices = List.of(List.of(0, 1, 2, 3), List.of(4, 5, 6, 7, 8, 9));
+        Assert.assertEquals(expectedIndices, actualIndices);
+    }
+    @Test
+    public void testMinLength () throws InvalidSmilesException {
+        IAtomContainer mol1 = this.sp.parseSmiles("CCCCCCCCCC");
+        IAtomContainer mol2 = this.sp.parseSmiles("CCCC(CCCCC)CCCCC");
         fragmenter.setMolecule(mol1);
-        List<List<Integer>> actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 5, 0, false);
+        List<List<Integer>> actualIndices = this.fragmenter.startAlkylFragmentation(5,0,false);
         List<List<Integer>> expectedIndices = List.of(List.of(5, 6, 7, 8, 9), List.of(0, 1, 2, 3, 4));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(5);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 4, -1, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(4,0,false);
         expectedIndices = List.of(List.of(0, 1, 2, 3), List.of(4, 5, 6, 7, 8, 9));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(4);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 3, -1, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(3,0,false);
         expectedIndices = List.of(List.of(3, 4, 5), List.of(0, 1, 2), List.of(6, 7, 8, 9));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(3);
-        System.out.println("---");
         this.fragmenter.setMolecule(mol2);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 5, 0, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(5,0,false);
         expectedIndices = List.of(List.of(8, 7, 6, 5, 4), List.of(3, 9, 10, 11, 12, 2, 1, 0, 13));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(5);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 4, 0, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(4,0,false);
         expectedIndices = List.of(List.of(8, 7, 6, 5), List.of(4, 3, 9, 10, 2, 1, 0, 11, 12, 13));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(4);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 3, 0, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(3,0,false);
         expectedIndices = List.of(List.of(5, 4, 3), List.of(8, 7, 6), List.of(2, 1, 0), List.of(9, 10, 11, 12, 13));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(3);
     }
-
+    @Test
     public void testMaxLength () throws InvalidSmilesException {
-        this.sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer mol1 = sp.parseSmiles("CCCCCCCCCC");
-        IAtomContainer mol2 = sp.parseSmiles("CCCC(CC)CCCCC");
-        this.fragmenter = new AlkylFragmenter();
+        IAtomContainer mol1 = this.sp.parseSmiles("CCCCCCCCCC");
+        IAtomContainer mol2 = this.sp.parseSmiles("CCCC(CC)CCCCC");
         fragmenter.setMolecule(mol1);
-        List<List<Integer>> actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 1, 5, false);
+        List<List<Integer>> actualIndices = this.fragmenter.startAlkylFragmentation(1,5,false);
         List<List<Integer>> expectedIndices = List.of(List.of(5,6,7,8,9), List.of(0,1,2,3,4));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(5);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 2, 4, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(1,4,false);
         expectedIndices = List.of(List.of(8, 9), List.of(4, 5, 6, 7), List.of(0, 1, 2, 3));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(4);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 2, 3, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(1,3,false);
         expectedIndices = List.of(List.of(9), List.of(6, 7, 8), List.of(3, 4, 5), List.of(0, 1, 2));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(3);
-        System.out.println("---");
         this.fragmenter.setMolecule(mol2);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 1, 5, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(1,5,false);
         expectedIndices = List.of(List.of(7, 8, 9, 10), List.of(0, 1, 2, 3, 6), List.of(4, 5));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(5);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 1, 4, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(1,4,false);
         expectedIndices = List.of(List.of(10), List.of(6, 7, 8, 9), List.of(0, 1, 2, 3), List.of(4, 5));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(4);
-        actualIndices = this.fragmenter.chainCutter(this.fragmenter.branchCutter(), 1, 3, false);
+        actualIndices = this.fragmenter.startAlkylFragmentation(1,3,false);
         expectedIndices = List.of(List.of(8, 9, 10), List.of(3, 6, 7), List.of(0, 1, 2), List.of(4, 5));
         Assert.assertEquals(expectedIndices, actualIndices);
-        System.out.println(3);
     }
 }
