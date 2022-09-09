@@ -23,112 +23,155 @@
  */
 
 package de.unijena.cheminf.alkyl;
+import org.openscience.cdk.AtomContainer;
+import org.openscience.cdk.exception.CDKException;
+import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IBond;
+import org.openscience.cdk.smiles.SmilesGenerator;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class AlkylFragmenter {
     private IAtomContainer molecule;
+    private List<Integer>[] connections;
+    private List<List<Integer>> branches;
+    private List<List<Integer>> fragmentsIndices;
+    private List<IAtomContainer> fragmentsAtomContainer;
+    private List<List<Integer>> rest;
     private int minCut;
     private int maxCut;
-    private boolean isPreservingTertiaryQuarternaryCarbons;
+    private boolean isPreservingTertiaryQuaternaryCarbons;
 
     public AlkylFragmenter(){}
-
-    public void setMolecule(IAtomContainer m) {
-        molecule = m;
+    public void setMolecule(IAtomContainer aMolecule) {
+        this.molecule = aMolecule;
     }
-    public List<List<Integer>> startAlkylFragmentation(int min, int max, boolean pc) {
-        this.minCut = min;
-        this.maxCut = max;
-        this.isPreservingTertiaryQuarternaryCarbons = pc;
-        List<List<Integer>> bc = branchCutter();
-        return chainCutter(bc);
+    public IAtomContainer getMolecule () {
+        return this.molecule;
+    }
+    public void fragmentationSettings(int aMinCut, int aMaxCut, boolean aIsPreservingTertiaryQuaternaryCarbons) throws CloneNotSupportedException {
+        this.minCut = aMinCut;
+        this.maxCut = aMaxCut;
+        this.isPreservingTertiaryQuaternaryCarbons = aIsPreservingTertiaryQuaternaryCarbons;
+        cutBranches();
+        cutChains();
+        System.out.println(this.branches);
+        System.out.println(this.fragmentsIndices);
+        System.out.println(this.rest);
+        makeCorrections();
+        genAtomContainer(this.fragmentsIndices);
+        System.out.println(this.fragmentsIndices);
     }
 
-    private List<IAtomContainer> genAtomContainer(List<List<Integer>> indicesList) throws CloneNotSupportedException {
-        List<IAtomContainer> molList = new ArrayList<>();
-        for (List<Integer> il : indicesList) {
-            IAtomContainer mol = molecule.clone();
-            for (int i=mol.getAtomCount()-1; i<=0; i++) {
-                if (!il.contains(i)) {
-                    mol.removeAtom(i);
+    private void genAtomContainer(List<List<Integer>> anIndicesList) throws CloneNotSupportedException {
+        this.fragmentsAtomContainer = new ArrayList<>(anIndicesList.size());
+        for (List<Integer> tmpListItem : anIndicesList) {
+            IAtomContainer tmpMoleculeFragment = new AtomContainer();
+            for (IBond tmpBond : molecule.bonds()) {
+                if (tmpListItem.contains(tmpBond.getAtom(0).getIndex()) && tmpListItem.contains(tmpBond.getAtom(1).getIndex())) {
+                    tmpMoleculeFragment.addBond(tmpBond);
                 }
             }
-            molList.add(mol.clone());
+            for (int tmpAtomIndex : tmpListItem) {
+                tmpMoleculeFragment.addAtom(this.molecule.getAtom(tmpAtomIndex));
+            }
+            this.fragmentsAtomContainer.add(tmpMoleculeFragment);
         }
-        return molList;
+    }
+
+    private IAtomContainer saturateMolecule (IAtomContainer aMolecule) {
+        for (int i=0; i<aMolecule.getAtomCount(); i++) {
+            for (int j=0; j<aMolecule.getAtom(i).getImplicitHydrogenCount(); j++) {
+                IAtom hydrogen = aMolecule.getAtom(i).getBuilder().newInstance(IAtom.class, "H");
+                hydrogen.setAtomTypeName("H");
+                hydrogen.setImplicitHydrogenCount(0);
+                aMolecule.addAtom(hydrogen);
+                aMolecule.addBond(aMolecule.getAtom(i).getBuilder().newInstance(IBond.class, aMolecule.getAtom(i), hydrogen, IBond.Order.SINGLE));
+            }
+            aMolecule.getAtom(i).setImplicitHydrogenCount(0);
+        }
+        return aMolecule;
+    }
+
+    public List<IAtomContainer> getIAtomContainer () {
+        return this.fragmentsAtomContainer;
+    }
+
+    public List<String> getSmiles () throws CDKException {
+        SmilesGenerator tmpSmilesGenerator = SmilesGenerator.generic();
+        List<String> tmpSmilesList = new ArrayList<>(this.fragmentsAtomContainer.size());
+        for (IAtomContainer tmpFragment : this.fragmentsAtomContainer) {
+            tmpSmilesList.add(tmpSmilesGenerator.create(tmpFragment));
+        }
+        return tmpSmilesList;
     }
 
     /**
-     * This method separates the shorter branches from the longer ones and returns a list of linear this.molecule fragments
-     * in shape of lists of atom indices.
-     * @return
+     * This method dissects the molecule into individual branches.
      */
-    public List<List<Integer>> branchCutter () {
-        List<List<Integer>> chains = new ArrayList<>();
-        List<List<Integer>> chainList = new ArrayList<>();
-        List<Integer>[] connections = new ArrayList[this.molecule.getAtomCount()];
-        for (int i=0; i<connections.length; i++) {
-            connections[i] = new ArrayList<>();
+    public void cutBranches () {
+        this.branches = new ArrayList<>();
+        List<List<Integer>> tmpChainList = new ArrayList<>();
+        this.connections = new ArrayList[this.molecule.getAtomCount()];
+        for (int i=0; i<this.connections.length; i++) {
+            this.connections[i] = new ArrayList<>();
         }
         for (IBond bond : this.molecule.bonds()) {
-            connections[bond.getAtom(0).getIndex()].add(bond.getAtom(1).getIndex());
-            connections[bond.getAtom(1).getIndex()].add(bond.getAtom(0).getIndex());
+            this.connections[bond.getAtom(0).getIndex()].add(bond.getAtom(1).getIndex());
+            this.connections[bond.getAtom(1).getIndex()].add(bond.getAtom(0).getIndex());
         }
-        for (int i=0; i<connections.length; i++) {
-            if (connections[i].size() == 1) {
-                chainList.add(new ArrayList<>());
-                chainList.get(chainList.size()-1).add(i);
+        for (int i=0; i<this.connections.length; i++) {
+            if (this.connections[i].size() == 1) {
+                tmpChainList.add(new ArrayList<>());
+                tmpChainList.get(tmpChainList.size()-1).add(i);
             }
         }
-        boolean searching = true;
-        while (searching) {
-            int chainListIndex = 0;
-            while (chainListIndex < chainList.size()) {
-                List<Integer> chainListAtIndex = chainList.get(chainListIndex);
-                if (connections[chainListAtIndex.get(chainListAtIndex.size() - 1)].size() > 0 &&
-                        chainList.size() > 1) {
-                    chainListAtIndex.add(connections[chainListAtIndex.get(chainListAtIndex.size() - 1)].get(0));
-                    connections[chainListAtIndex.get(chainListAtIndex.size() - 1)]
-                            .remove(chainListAtIndex.get(chainListAtIndex.size() - 2));
-                    if (connections[chainListAtIndex.get(chainListAtIndex.size() - 1)].size() > 1) {
-                        chains.add(reverseList(chainListAtIndex));
-                        chainList.remove(chainListAtIndex);
-                        chainListIndex--;
+        boolean tmpIsSearching = true;
+        while (tmpIsSearching) {
+            int tmpChainListIndex = 0;
+            while (tmpChainListIndex < tmpChainList.size()) {
+                List<Integer> tmpChainListAtIndex = tmpChainList.get(tmpChainListIndex);
+                if (this.connections[tmpChainListAtIndex.get(tmpChainListAtIndex.size() - 1)].size() > 0 &&
+                        tmpChainList.size() > 1) {
+                    tmpChainListAtIndex.add(this.connections[tmpChainListAtIndex.get(tmpChainListAtIndex.size() - 1)].get(0));
+                    this.connections[tmpChainListAtIndex.get(tmpChainListAtIndex.size() - 1)]
+                            .remove(tmpChainListAtIndex.get(tmpChainListAtIndex.size() - 2));
+                    if (this.connections[tmpChainListAtIndex.get(tmpChainListAtIndex.size() - 1)].size() > 1) {
+                        this.branches.add(reverseList(tmpChainListAtIndex));
+                        tmpChainList.remove(tmpChainListAtIndex);
+                        tmpChainListIndex--;
                     }
                 } else {
-                    if (chainList.size() == 2) {
-                        chains.add(chainList.get(0));
-                        chainList.remove(0);
+                    if (tmpChainList.size() == 2) {
+                        this.branches.add(tmpChainList.get(0));
+                        tmpChainList.remove(0);
                     }
-                    chains.get(chains.size() - 1).remove(chains.get(chains.size() -1).size() - 1);
-                    chains.get(chains.size() - 1).addAll(reverseList(chainList.get(0)));
-                    chainList.remove(0);
-                    chainListIndex--;
-                    searching = false;
+                    this.branches.get(this.branches.size() - 1).remove(this.branches.get(this.branches.size() -1).size() - 1);
+                    this.branches.get(this.branches.size() - 1).addAll(reverseList(tmpChainList.get(0)));
+                    tmpChainList.remove(0);
+                    tmpChainListIndex--;
+                    tmpIsSearching = false;
                 }
-                chainListIndex++;
+                tmpChainListIndex++;
             }
         }
-        return chains;
     }
 
-    private List<Integer> reverseList(List<Integer> list) {
+    private List<Integer> reverseList(List<Integer> aList) {
         List<Integer> revList = new ArrayList<>();
-        for (int li : list) {
+        for (int li : aList) {
             revList.add(0,li);
         }
         return revList;
     }
 
     /**
-     * This method cuts linear molecule fragments into chains of equal length.
-     * @param chains
-     * @return
+     * This method cuts linear molecule fragments from the this.branches list into chains of equal length which are
+     * then stored in the this.fragmentsIndices list. Fragments that are too small or that
      */
-    public List<List<Integer>> chainCutter(List<List<Integer>> chains) {
+    private void cutChains() {
         /*
         This method filters out all chain fragments that are smaller than minCut and stores them in the "rest" list.
         Likewise, it stores
@@ -136,111 +179,147 @@ public class AlkylFragmenter {
 
         At first the method iterates through the chain list that consists of linear chain fragments.
          */
-        List<List<Integer>> rest = new ArrayList<>();
-        int chainsIndex = 0;
-        while (chainsIndex < chains.size() && chains.size() > 0) {
-            List<Integer> chainsAtIndex = chains.get(chainsIndex);
-            int index = 1;
-            int branchRest = 0;
-            while (index-branchRest < 2 && index < chainsAtIndex.size() && chainsIndex < chains.size()-1) {
-                if (index == 1 && isPreservingTertiaryQuarternaryCarbons) branchRest++;
-                else if (this.molecule.getBond(this.molecule.getAtom(chainsAtIndex.get(branchRest)),
-                        this.molecule.getAtom(chainsAtIndex.get(index))).getOrder() != IBond.Order.SINGLE) branchRest++;
-                index++;
+        this.rest = new ArrayList<>();
+        this.fragmentsIndices = new ArrayList<>(this.molecule.getAtomCount()/this.minCut);
+        List<Integer> tmpBranchingIndices = new ArrayList<>(this.branches.size()-1);
+        for (List<Integer> tmpBranch : this.branches) {
+            tmpBranchingIndices.add(tmpBranch.get(0));
+        }
+        int tmpBranchesIndex = 0;
+        while (tmpBranchesIndex < this.branches.size()) {
+            List<Integer> tmpBranchesItem = this.branches.get(tmpBranchesIndex);
+            int tmpIndex = 1;
+            int tmpBranchRest = 0;
+            /*
+            This while loop uses tmpIndex to iterate through the current tmpBranchesItem if it is not the last one in 
+            the this.branches list. The last tmpBranchesItem is the longest chain in the molecule. All the others' first 
+            integers are the indices of the atoms where the branches are connected to another molecule chain.
+            If isPreservingTertiaryQuaternaryCarbons is true and/or a multiple bond would be cut, the tmpBranchRest 
+            increases. Later the tmpBranchesRest will be used to remove the part of this branch, which needs be added
+            back to the connected branch.
+             */
+            while (tmpIndex-tmpBranchRest < 2 && tmpIndex < tmpBranchesItem.size() && tmpBranchesIndex < this.branches.size()-1) {
+                if (tmpIndex == 1 && isPreservingTertiaryQuaternaryCarbons) {
+                    tmpBranchRest++;
+                }
+                else if (this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get(tmpBranchRest)),
+                        this.molecule.getAtom(tmpBranchesItem.get(tmpIndex))).getOrder() != IBond.Order.SINGLE) {
+                    tmpBranchRest++;
+                }
+                tmpIndex++;
             }
-            if (index-branchRest > 0) {
-                if (chainsAtIndex.size() - branchRest > this.minCut) {
-                    if (branchRest > 0 && chainsIndex < chains.size()-1) {
-                        rest.add(chainsAtIndex.subList(0, branchRest+1));
-                    }
-                    if (chainsIndex < chains.size()-1) {
-                        chains.add(chainsIndex, chainsAtIndex.subList(1,chainsAtIndex.size()));
-                        chains.remove(chainsAtIndex);
-                        chainsAtIndex = chains.get(chainsIndex);
-                    }
-                    chains.add(chainsIndex, chainsAtIndex.subList(branchRest, chainsAtIndex.size()));
-                    chains.remove(chainsAtIndex);
-                    chainsAtIndex = chains.get(chainsIndex);
-                    int shift = 0;
-                    index = 0;
-                    if (this.maxCut > 0) {
-                        while ((index+1) * this.maxCut + shift <= chainsAtIndex.size()) {
-                            int shift0 = shift;
-                            boolean reverseShift = false;
-                            if ((index + 1) * this.maxCut + shift + 1 < chainsAtIndex.size()) {
-                                while (this.molecule.getBond(this.molecule.getAtom(chainsAtIndex.get((index + 1) * this.maxCut + shift)),
-                                        this.molecule.getAtom(chainsAtIndex.get((index + 1) * this.maxCut + shift + 1))).getOrder() != IBond.Order.SINGLE &&
-                                        (index + 1) * this.maxCut + shift < chainsAtIndex.size()) {
-                                    if (shift0 - shift < this.maxCut - this.minCut && !reverseShift) {
-                                        shift--;
-                                    }
-                                    if (shift0 - shift >= this.maxCut - this.minCut && !reverseShift) {
-                                        reverseShift = true;
-                                        shift = shift0;
-                                    }
-                                    if (reverseShift) {
-                                        shift++;
-                                    }
+            /*
+            If the rest of the current branch (without the part that needs to be added back to the connected branch) is
+            smaller than the minimum chain length (this.minCut) it means the branch is too small so that it will be
+            added to the connected branch completely.
+            If it is big enough though only the first part of the branch will be added back to the connected branch (to
+            preserve tertiary and quaternary carbon atoms and to not split multiple bonds.
+             */
+            if (tmpBranchesItem.size() - tmpBranchRest <= this.minCut) {
+                this.rest.add(tmpBranchesItem);
+            } else {
+                if (tmpBranchRest > 0 && tmpBranchesIndex < this.branches.size()-1) {
+                    this.rest.add(tmpBranchesItem.subList(0, tmpBranchRest+1));
+                }
+                if (tmpBranchesIndex < this.branches.size()-1) {
+                    tmpBranchesItem = tmpBranchesItem.subList(tmpBranchRest+1, tmpBranchesItem.size());
+                }
+                int tmpShift = 0;
+                int tmpShift0 = 0;
+                tmpIndex = 0;
+                if (this.maxCut > 0) {
+                    /*
+                    If there is a set maximum chain length (this.maxCut > 0) the following while loop cuts the current
+                    branch into chain fragments of equal length. In case a multiple bond would be cut, the current
+                    fragment will be made smaller to shift the split to the previous bond. If the resulting fragment is
+                    smaller than the minimum chain length the fragment will increase in size instead until the split
+                    will be at a single bond.
+                    All these fragments are then stored into the this.fragmentsIndices list.
+                     */
+                    while ((tmpIndex+1) * this.maxCut + tmpShift <= tmpBranchesItem.size()) {
+                        tmpShift0 = tmpShift;
+                        boolean tmpIsReversedShift = false;
+                        if ((tmpIndex + 1) * this.maxCut + tmpShift + 1 < tmpBranchesItem.size()) {
+                            while ((tmpIndex + 1) * this.maxCut + tmpShift + 1 < tmpBranchesItem.size() &&
+                                    (this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get((tmpIndex + 1) * this.maxCut + tmpShift)),
+                                    this.molecule.getAtom(tmpBranchesItem.get((tmpIndex + 1) * this.maxCut + tmpShift + 1))).getOrder() != IBond.Order.SINGLE ||
+                                    isPreservingTertiaryQuaternaryCarbons &&
+                                    tmpBranchingIndices.contains(tmpBranchesItem.get((tmpIndex + 1) * this.maxCut + tmpShift)))) {
+                                if (tmpShift0 - tmpShift < this.maxCut - this.minCut && !tmpIsReversedShift) {
+                                    tmpShift--;
+                                }
+                                if (tmpShift0 - tmpShift >= this.maxCut - this.minCut && !tmpIsReversedShift) {
+                                    tmpIsReversedShift = true;
+                                    tmpShift = tmpShift0;
+                                }
+                                if (tmpIsReversedShift) {
+                                    tmpShift++;
                                 }
                             }
-                            chains.add(0, chainsAtIndex.subList(index*this.maxCut+shift, (index+1)*this.maxCut+shift));
-                            chainsIndex++;
-                            index++;
                         }
-                        if (chainsAtIndex.size()/this.maxCut < (float) chainsAtIndex.size()/this.maxCut) {
-                            chains.add(0, chainsAtIndex.subList(index*this.maxCut+shift, chainsAtIndex.size()));
-                        }
-                        chains.remove(chainsAtIndex);
-
-                    } else {
-                        while ((index + 1) * this.minCut + shift <= chainsAtIndex.size()) {
-                            if ((index + 1) * this.minCut + shift + 1 < chainsAtIndex.size()) {
-                                while (this.molecule.getBond(this.molecule.getAtom(chainsAtIndex.get((index + 1) * this.minCut + shift)),
-                                        this.molecule.getAtom(chainsAtIndex.get((index + 1) * this.minCut + shift + 1))).getOrder() != IBond.Order.SINGLE &&
-                                        (index + 1) * this.minCut + shift < chainsAtIndex.size()) {
-                                    shift++;
-                                }
-                            }
-                            chains.add(0, chainsAtIndex.subList(index * this.minCut + shift, (index + 1) * this.minCut + shift));
-                            chainsIndex++;
-                            index++;
-                        }
-                        if (chainsAtIndex.size()/this.minCut < (float) chainsAtIndex.size()/this.minCut) {
-                            rest.add(chainsAtIndex.subList(index*this.minCut+shift-1, chainsAtIndex.size()));
-                        }
-                        chains.remove(chainsAtIndex);
-                        chainsIndex--;
+                        this.fragmentsIndices.add(tmpBranchesItem.subList(tmpIndex*this.maxCut+tmpShift0, (tmpIndex+1)*this.maxCut+tmpShift));
+                        tmpIndex++;
+                    }
+                    /*
+                    If the
+                     */
+                    if (tmpBranchesItem.size()%this.maxCut != 0) {
+                        this.fragmentsIndices.add(tmpBranchesItem.subList(tmpIndex*this.maxCut+tmpShift0, tmpBranchesItem.size()));
                     }
                 } else {
-                    rest.add(chainsAtIndex);
-                    chains.remove(chainsAtIndex);
-                    chainsIndex--;
-                }
-            }
-            chainsIndex++;
-        }
-        while (rest.size() > 0) {
-            chainsIndex = 0;
-            while (chainsIndex < chains.size()) {
-                List<Integer> chainsAtIndex = chains.get(chainsIndex);
-                int restIndex = 0;
-                boolean isCombined = false;
-                while (restIndex < rest.size() && !isCombined) {
-                    List<Integer> restAtIndex = rest.get(restIndex);
-                    if (chainsAtIndex.contains(restAtIndex.get(0))) {
-                        List<Integer> combine = new ArrayList<>(chainsAtIndex);
-                        combine.addAll(restAtIndex.subList(1, restAtIndex.size()));
-                        chains.add(combine);
-                        chains.remove(chainsAtIndex);
-                        rest.remove(restAtIndex);
-                        restIndex++;
-                        isCombined = true;
+                    while ((tmpIndex + 1) * this.minCut + tmpShift <= tmpBranchesItem.size()) {
+                        tmpShift0 = tmpShift;
+                        if ((tmpIndex + 1) * this.minCut + tmpShift + 1 < tmpBranchesItem.size()) {
+                            while ((tmpIndex + 1) * this.minCut + tmpShift + 1 < tmpBranchesItem.size() &&
+                                    (this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get((tmpIndex + 1) * this.minCut + tmpShift)),
+                                    this.molecule.getAtom(tmpBranchesItem.get((tmpIndex + 1) * this.minCut + tmpShift + 1))).getOrder() != IBond.Order.SINGLE ||
+                                    isPreservingTertiaryQuaternaryCarbons &&
+                                    tmpBranchingIndices.contains(tmpBranchesItem.get((tmpIndex + 1) * this.minCut + tmpShift)))) {
+                                tmpShift++;
+                            }
+                        }
+                        this.fragmentsIndices.add(tmpBranchesItem.subList(tmpIndex * this.minCut + tmpShift0, (tmpIndex + 1) * this.minCut + tmpShift));
+                        tmpIndex++;
                     }
-                    restIndex++;
+                    if (tmpBranchesItem.size()%this.minCut != 0) {
+                        this.rest.add(tmpBranchesItem.subList(tmpIndex*this.minCut+tmpShift0-1, tmpBranchesItem.size()));
+                    }
                 }
-                if (!isCombined) chainsIndex++;
+            }
+            tmpBranchesIndex++;
+        }
+    }
+
+    /**
+     * During cutBranches all branches are separated from each other, but in order to preserve certain properties
+     * through the fragmentation process the methods cutRings and cutChains produce rest fragments that need to be
+     * added back to other branches, which is done by makeCorrections.
+     * Every rest fragment has the index of its connecting atom in another branch stored. This
+     */
+    private void makeCorrections () {
+        while (this.rest.size() > 0) {
+            int tmpBranchesIndex = 0;
+            while (tmpBranchesIndex < this.fragmentsIndices.size()) {
+                List<Integer> tmpChainsAtIndex = this.fragmentsIndices.get(tmpBranchesIndex);
+                int tmpRestIndex = 0;
+                boolean tmpIsCombined = false;
+                while (tmpRestIndex < this.rest.size() && !tmpIsCombined) {
+                    List<Integer> restAtIndex = this.rest.get(tmpRestIndex);
+                    if (tmpChainsAtIndex.contains(restAtIndex.get(0))) {
+                        List<Integer> tmpCombinedFragments = new ArrayList<>(tmpChainsAtIndex);
+                        tmpCombinedFragments.addAll(restAtIndex.subList(1, restAtIndex.size()));
+                        this.fragmentsIndices.add(tmpCombinedFragments);
+                        this.fragmentsIndices.remove(tmpChainsAtIndex);
+                        this.rest.remove(restAtIndex);
+                        tmpRestIndex++;
+                        tmpIsCombined = true;
+                    }
+                    tmpRestIndex++;
+                }
+                if (!tmpIsCombined) {
+                    tmpBranchesIndex++;
+                }
             }
         }
-        return chains;
     }
 }
