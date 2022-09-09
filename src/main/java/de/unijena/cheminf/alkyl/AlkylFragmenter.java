@@ -29,6 +29,8 @@ import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.smiles.SmilesGenerator;
+import org.openscience.cdk.tools.CDKHydrogenAdder;
+import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +53,7 @@ public class AlkylFragmenter {
     public IAtomContainer getMolecule () {
         return this.molecule;
     }
-    public void fragmentationSettings(int aMinCut, int aMaxCut, boolean aIsPreservingTertiaryQuaternaryCarbons) throws CloneNotSupportedException {
+    public void fragmentationSettings(int aMinCut, int aMaxCut, boolean aIsPreservingTertiaryQuaternaryCarbons) throws CloneNotSupportedException, CDKException {
         this.minCut = aMinCut;
         this.maxCut = aMaxCut;
         this.isPreservingTertiaryQuaternaryCarbons = aIsPreservingTertiaryQuaternaryCarbons;
@@ -65,7 +67,7 @@ public class AlkylFragmenter {
         System.out.println(this.fragmentsIndices);
     }
 
-    private void genAtomContainer(List<List<Integer>> anIndicesList) throws CloneNotSupportedException {
+    private void genAtomContainer(List<List<Integer>> anIndicesList) throws CloneNotSupportedException, CDKException {
         this.fragmentsAtomContainer = new ArrayList<>(anIndicesList.size());
         for (List<Integer> tmpListItem : anIndicesList) {
             IAtomContainer tmpMoleculeFragment = new AtomContainer();
@@ -77,6 +79,8 @@ public class AlkylFragmenter {
             for (int tmpAtomIndex : tmpListItem) {
                 tmpMoleculeFragment.addAtom(this.molecule.getAtom(tmpAtomIndex));
             }
+            AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpMoleculeFragment);
+            CDKHydrogenAdder.getInstance(tmpMoleculeFragment.getBuilder()).addImplicitHydrogens(tmpMoleculeFragment);
             this.fragmentsAtomContainer.add(tmpMoleculeFragment);
         }
     }
