@@ -233,7 +233,6 @@ public class AlkylFragmenterTest extends AlkylFragmenter {
         IAtomContainer mol1 = this.sp.parseSmiles("CCC=C=CCCCC");
         this.fragmenter.setMolecule(mol1);
         this.fragmenter.setFragmentationSettings(2,3,false);
-        System.out.println(getSmiles(this.fragmenter.getIAtomContainer()));
         Assert.assertTrue(compareLists(new String[]{"CCC", "C=C=CC", "CC"},
                 getSmiles(this.fragmenter.getIAtomContainer())));
     }
@@ -247,7 +246,6 @@ public class AlkylFragmenterTest extends AlkylFragmenter {
         IAtomContainer mol1 = this.sp.parseSmiles("CCCCCCC(=CCCCC)CCCCCCC");
         this.fragmenter.setMolecule(mol1);
         this.fragmenter.setFragmentationSettings(2,3,false);
-        System.out.println(getSmiles(this.fragmenter.getIAtomContainer()));
         Assert.assertTrue(compareLists(new String[]{"CCC", "CCC", "CCC", "CC", "C(C)CC", "CC(=C)C"},
                 getSmiles(this.fragmenter.getIAtomContainer())));
     }
@@ -256,7 +254,6 @@ public class AlkylFragmenterTest extends AlkylFragmenter {
         IAtomContainer mol1 = this.sp.parseSmiles("CCCCCCC(=C=CCCC)CCCCCCC");
         this.fragmenter.setMolecule(mol1);
         this.fragmenter.setFragmentationSettings(2,3,false);
-        System.out.println(getSmiles(this.fragmenter.getIAtomContainer()));
         Assert.assertTrue(compareLists(new String[]{"CCC", "CCC", "CCC", "CCC", "CC", "CC(=C=C)C"},
                 getSmiles(this.fragmenter.getIAtomContainer())));
     }
@@ -265,7 +262,6 @@ public class AlkylFragmenterTest extends AlkylFragmenter {
         IAtomContainer mol1 = this.sp.parseSmiles("CCC(CC)(CCC)CC(C)CC");
         this.fragmenter.setMolecule(mol1);
         this.fragmenter.setFragmentationSettings(2,3,true);
-        System.out.println(getSmiles(this.fragmenter.getIAtomContainer()));
         Assert.assertTrue(compareLists(new String[]{"CC(CC)(CC)CC(C)CC", "CC"},
                 getSmiles(this.fragmenter.getIAtomContainer())));
     }
@@ -274,7 +270,6 @@ public class AlkylFragmenterTest extends AlkylFragmenter {
         IAtomContainer mol1 = this.sp.parseSmiles("CCC(CC)(CCC)CC(C)CC");
         this.fragmenter.setMolecule(mol1);
         this.fragmenter.setFragmentationSettings(0,0,false);
-        System.out.println(getSmiles(this.fragmenter.getIAtomContainer()));
         Assert.assertTrue(compareLists(new String[]{"CCCCCCCC", "CC", "CC", "C"},
                 getSmiles(this.fragmenter.getIAtomContainer())));
     }
@@ -283,7 +278,6 @@ public class AlkylFragmenterTest extends AlkylFragmenter {
         IAtomContainer mol1 = this.sp.parseSmiles("CCC(CC)(CCC)CC(C)CC");
         this.fragmenter.setMolecule(mol1);
         this.fragmenter.setFragmentationSettings(0,0,true);
-        System.out.println(getSmiles(this.fragmenter.getIAtomContainer()));
         Assert.assertTrue(compareLists(new String[]{"CCCC(C)(C)CC(C)CC", "C", "C"},
                 getSmiles(this.fragmenter.getIAtomContainer())));
     }
@@ -299,7 +293,6 @@ public class AlkylFragmenterTest extends AlkylFragmenter {
         IAtomContainer mol1 = this.sp.parseSmiles("C2CCC(CCCCCC1CCCCC1)CC2");
         this.fragmenter.setMolecule(mol1);
         this.fragmenter.setFragmentationSettings(2,3,false);
-        System.out.println(getSmiles(this.fragmenter.getIAtomContainer()));
         Assert.assertTrue(compareLists(new String[]{"C1CCCCC1", "CCC", "CC", "C1CCCCC1"},
                 getSmiles(this.fragmenter.getIAtomContainer())));
     }
@@ -308,8 +301,7 @@ public class AlkylFragmenterTest extends AlkylFragmenter {
         IAtomContainer mol1 = this.sp.parseSmiles("C2CCC(CCCCCC1CCCCC1)CC2");
         this.fragmenter.setMolecule(mol1);
         this.fragmenter.setFragmentationSettings(2,3,true);
-        System.out.println(getSmiles(this.fragmenter.getIAtomContainer()));
-        Assert.assertTrue(compareLists(new String[]{"C1CCC(C)CC1", "CCC", "CC1CCCCC1"},
+        Assert.assertTrue(compareLists(new String[]{"C1CCC(C)CC1", "CC1CCCCC1", "CCC"},
                 getSmiles(this.fragmenter.getIAtomContainer())));
     }
     //</editor-fold>

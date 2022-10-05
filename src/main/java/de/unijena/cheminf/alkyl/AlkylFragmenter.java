@@ -122,18 +122,10 @@ public class AlkylFragmenter {
             tmpAtomIndices.add(i);
         }
         cutBranches(tmpAtomIndices);
-        System.out.print("Branches: ");
-        System.out.println(this.branches);
         cutChains();
         cutRings();
-        System.out.print("FragmenterIndices: ");
-        System.out.println(this.fragmentsIndices);
-        System.out.print("Remainder: ");
-        System.out.println(this.remainder);
         makeCorrections();
         genAtomContainer(this.fragmentsIndices);
-        System.out.print("FragmenterIndices after correction: ");
-        System.out.println(this.fragmentsIndices);
     }
 
     /**
@@ -386,7 +378,6 @@ public class AlkylFragmenter {
                                 if (tmpIsReversedShift) {
                                     tmpShift--;
                                 }
-                                System.out.println(tmpShift);
                             }
                         }
                         this.fragmentsIndices.add(tmpBranchesItem.subList(tmpIndexNextCutPosition+tmpShift, tmpIndexCutPosition+tmpShift0));
@@ -397,7 +388,6 @@ public class AlkylFragmenter {
                     If the
                      */
                     if (tmpIndexCutPosition+tmpShift % this.maxCut != 0) {
-                        System.out.println(tmpIndexCutPosition+tmpShift);
                         if (tmpIndexCutPosition+tmpShift >= this.minCut) {
                             this.fragmentsIndices.add(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift));
                         } else {
@@ -460,8 +450,6 @@ public class AlkylFragmenter {
             }
             tmpConnectionsIndex++;
         }
-        System.out.println("FragmentStarter");
-        System.out.println(tmpFragmentStarter);
         while (tmpFragmentStarter.size() != 0) {
             /*
             Each atom in the tmpFragmentStarter is the beginning of either a ring or a ring linker fragment.
@@ -505,14 +493,6 @@ public class AlkylFragmenter {
                             tmpBranchStarter.add(this.connections[tmpIndexCurrentAtom].get(tmpIndex));
                             this.connections[tmpBranchStarter.get(tmpBranchStarter.size()-1)].remove((Integer) tmpIndexCurrentAtom);
                         }
-                        System.out.print("Current Atom:\t\t\t");
-                        System.out.print(tmpIndexCurrentAtom);
-                        System.out.print("\tRing Atom?: ");
-                        System.out.println(this.molecule.getAtom(tmpIndexCurrentAtom).isInRing());
-                        System.out.print("Neighbouring Atom:\t\t");
-                        System.out.print(tmpIndexNeighbouringAtom);
-                        System.out.print("\tRing Atom?: ");
-                        System.out.println(this.molecule.getAtom(tmpIndexNeighbouringAtom).isInRing());
                         int tmpIndexNextNeighbouringAtom = 0;
                         for (int tmpIndex=this.connections[tmpIndexNeighbouringAtom].size()-1; tmpIndex>=0; tmpIndex--) {
                             /*
@@ -520,12 +500,6 @@ public class AlkylFragmenter {
                             of tmpIndexCurrentAtom).
                              */
                             tmpIndexNextNeighbouringAtom = this.connections[tmpIndexNeighbouringAtom].get(tmpIndex);
-                            System.out.print("Next Neighbouring Atom:\t");
-                            System.out.print(tmpIndexNextNeighbouringAtom);
-                            System.out.print("\tRing Atom?: ");
-                            System.out.println(this.molecule.getAtom(tmpIndexNextNeighbouringAtom).isInRing());
-                            System.out.print("connections neighbouring atom: ");
-                            System.out.println(this.connections[tmpIndexNeighbouringAtom]);
                             this.connections[tmpIndexNextNeighbouringAtom].remove((Integer) tmpIndexNeighbouringAtom);
                             if (!tmpIsRingNotRingLinker && (this.molecule.getAtom(tmpIndexNeighbouringAtom).isInRing() ||
                                     this.molecule.getAtom(tmpIndexNextNeighbouringAtom).isInRing() &&
@@ -546,7 +520,6 @@ public class AlkylFragmenter {
                                     and the tmpIndexNextNeighbouringAtom is added to tmpFragmentStarter
                                      */
                                 this.connections[tmpIndexCurrentAtom] = new ArrayList<>();
-                                System.out.println("0000");
                                 tmpFragmentStarter.add(tmpIndexNextNeighbouringAtom);
                                 this.connections[tmpIndexNextNeighbouringAtom].remove((Integer) tmpIndexNeighbouringAtom);
                                 tmpCurrentChain.add(tmpIndexNeighbouringAtom);
@@ -564,10 +537,8 @@ public class AlkylFragmenter {
                                     tmpCurrentChain = new ArrayList<>();
                                 }
                             } else if (tmpIndex > 0) {
-                                System.out.println("tmpIndex > 0");
                                 tmpBranchStarter.add(tmpIndexNextNeighbouringAtom);
                             } else {
-                                System.out.println("else");
                                 this.connections[tmpIndexNeighbouringAtom].remove((Integer) tmpIndexCurrentAtom);
                                 tmpCurrentChain.add(tmpIndexNeighbouringAtom);
                                 this.connections[tmpIndexCurrentAtom] = new ArrayList<>();
@@ -579,19 +550,7 @@ public class AlkylFragmenter {
                             tmpCurrentChain.add(tmpIndexNeighbouringAtom);
                             this.connections[tmpIndexCurrentAtom] = new ArrayList<>();
                         }
-                        System.out.println("after neighbours");
-                        System.out.print("current chain: ");
-                        System.out.println(tmpCurrentChain);
-                        System.out.print("chain starters: ");
-                        System.out.println(tmpBranchStarter);
-                        System.out.print("fragment starters: ");
-                        System.out.println(tmpFragmentStarter);
-                        System.out.print("fragments: ");
-                        System.out.println(tmpFragment);
-                        System.out.println();
-
                     }
-                    System.out.println();
                 } else {
                     /*
                     The first neighbouring atom that is of the same kind as the current atom (both ring or both
@@ -606,17 +565,11 @@ public class AlkylFragmenter {
                         This loop continues until the algorithm arrives at an earlier atom again. Then it starts again
                         with a new branch or a fragment starter (outer loops).
                          */
-                        System.out.print("neighbouring atoms: ");
-                        System.out.println(this.connections[tmpIndexCurrentAtom]);
                         for (int tmpNeighbouringAtom : this.connections[tmpIndexCurrentAtom]) {
                             /*
                             In order to sort the atoms into rings and ring linkers, the method iterates through each of
                             the neighbours of every atom.
                              */
-                            System.out.print("Neighbouring Atom: ");
-                            System.out.println(tmpNeighbouringAtom);
-                            System.out.print("Is Neighbouring Atom in Ring: ");
-                            System.out.println(this.molecule.getAtom(tmpNeighbouringAtom).isInRing());
                             if ((this.molecule.getAtom(tmpNeighbouringAtom).isInRing() == tmpIsRingNotRingLinker ||
                                     !this.molecule.getAtom(tmpNeighbouringAtom).isInRing() == !tmpIsRingNotRingLinker)
                                     && !tmpHasSameKindNeighbour) {
@@ -653,14 +606,6 @@ public class AlkylFragmenter {
                         tmpIndexCurrentAtom is cleared.
                          */
                         this.connections[tmpIndexCurrentAtom] = new ArrayList<>();
-                        System.out.println("after neighbours");
-                        System.out.print("current chain: ");
-                        System.out.println(tmpCurrentChain);
-                        System.out.print("chain starters: ");
-                        System.out.println(tmpBranchStarter);
-                        System.out.print("fragment starters: ");
-                        System.out.println(tmpFragmentStarter);
-                        System.out.println();
                         if (tmpHasSameKindNeighbour) {
                             /*
                             If the tmpIndexCurrentAtom has at least one neighbour of the same type, the next
@@ -695,11 +640,7 @@ public class AlkylFragmenter {
                 If the current atom type is ring atom the fragment will not be further broken down and it is added to
                 the this.fragmentsIndices list.
                  */
-                System.out.println("fragmentsIndices");
-                System.out.println(this.fragmentsIndices);
                 this.fragmentsIndices.add(tmpCurrentChain);
-                System.out.println(this.fragmentsIndices);
-                System.out.println();
             } else {
                 /*
                 Ring Linker fragments are first separated into individual branches in cutBranches and cut in the desired
@@ -718,12 +659,6 @@ public class AlkylFragmenter {
                 int tmpFragmentIndex = 1;
                 while (tmpFragmentIndex < tmpFragment.size()){
                     List<Integer> tmpCurrentFragment = tmpFragment.get(tmpFragmentIndex);
-                    System.out.print("current: ");
-                    System.out.println(this.connections[tmpCurrentFragment.get(tmpCurrentFragment.size()-1)]);
-                    System.out.println(tmpMergedFragments);
-                    System.out.print("0: ");
-                    System.out.println(this.connections[tmpFragment.get(0).get(tmpFragment.get(0).size()-1)]);
-                    System.out.println(tmpCurrentFragment);
                     if (this.connections[tmpCurrentFragment.get(tmpCurrentFragment.size()-1)].size() > 0 &&
                             tmpMergedFragments.contains(this.connections[tmpCurrentFragment.get(tmpCurrentFragment.size()-1)].get(0)) ||
                             this.connections[tmpFragment.get(0).get(tmpFragment.get(0).size()-1)].size() > 0 &&
@@ -731,14 +666,11 @@ public class AlkylFragmenter {
                         tmpMergedFragments.addAll(tmpCurrentFragment);
                         tmpFragment.remove(tmpCurrentFragment);
                         tmpFragmentIndex--;
-                        System.out.println(tmpMergedFragments);
                         tmpListHasChanged = true;
                     }
                     tmpFragmentIndex++;
                 }
             }
-            System.out.print("merged: ");
-            System.out.println(tmpMergedFragments);
             cutBranches(tmpMergedFragments);
             cutChains();
             tmpFragment.remove(0);
