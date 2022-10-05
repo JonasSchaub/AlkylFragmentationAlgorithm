@@ -27,14 +27,32 @@ package de.unijena.cheminf.alkyl;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
-import org.xmlcml.euclid.Int;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ConsoleApplication {
+
+    /**
+     * The getSmiles() method converts the internal list of IAtomContainer objects with the fragment molecules to a list
+     * of SMILES Strings and returns it.
+     * @return An ArrayList of SMILES Strings for each fragment.
+     * @throws CDKException if an IAtomContainer in this.fragmentsAtomContainer does not contain a valid molecule (e.g.
+     * if there are individual atoms that are not connected with each other through bonds.
+     */
+    private static List<String> getSmiles(List<IAtomContainer> aFragmentsList) throws CDKException {
+        SmilesGenerator tmpSmilesGenerator = SmilesGenerator.generic();
+        List<String> tmpSmilesList = new ArrayList<>(aFragmentsList.size());
+        for (IAtomContainer tmpFragment : aFragmentsList) {
+            tmpSmilesList.add(tmpSmilesGenerator.create(tmpFragment));
+        }
+        return tmpSmilesList;
+    }
     public static void main(String args[]) throws CDKException, IOException, CloneNotSupportedException {
         BufferedReader tmpBufferedReader = new BufferedReader(new InputStreamReader(System.in));
         AlkylFragmenter tmpFragmenter = new AlkylFragmenter();
@@ -62,7 +80,8 @@ public class ConsoleApplication {
                 System.out.println("Which preference do you want to change?");
                 System.out.println("1 Minimum Chain Length (current: " + Integer.toString(tmpMinCut)+")");
                 System.out.println("2 Maximum Chain Length (current: " + Integer.toString(tmpMaxCut)+")");
-                System.out.println("3 Preserve Tertiary and Quaternary Carbon Atoms (current: " + Boolean.toString(tmpIsPreservingTertiaryQuaternaryCarbonAtoms)+")");
+                System.out.println("3 Preserve Tertiary and Quaternary Carbon Atoms (current: "
+                        + Boolean.toString(tmpIsPreservingTertiaryQuaternaryCarbonAtoms)+")");
                 System.out.println("4 Back");
                 tmpPreferences = tmpBufferedReader.readLine();
                 if (tmpPreferences.equals("1")) {
@@ -74,19 +93,16 @@ public class ConsoleApplication {
                     tmpMaxCut = Integer.parseInt(tmpBufferedReader.readLine());
                 }
                 if (tmpPreferences.equals("3")) {
-                    System.out.println("Preserve Tertiary and Quaternary Carbon Atoms?\n1 Yes\n2 No");
-                    String tmpPreserveTertiaryQuaternaryCarbonOption = tmpBufferedReader.readLine();
-                    if (tmpPreserveTertiaryQuaternaryCarbonOption.equals("1")) {
+                    if (!tmpIsPreservingTertiaryQuaternaryCarbonAtoms) {
                         tmpIsPreservingTertiaryQuaternaryCarbonAtoms = true;
-                    }
-                    if (tmpPreserveTertiaryQuaternaryCarbonOption.equals("2")) {
+                    } else {
                         tmpIsPreservingTertiaryQuaternaryCarbonAtoms = false;
                     }
                 }
             }
             tmpPreferences = "";
-            tmpFragmenter.fragmentationSettings(tmpMinCut, tmpMaxCut, tmpIsPreservingTertiaryQuaternaryCarbonAtoms);
-            System.out.println(tmpFragmenter.getSmiles());
+            tmpFragmenter.setFragmentationSettings(tmpMinCut, tmpMaxCut, tmpIsPreservingTertiaryQuaternaryCarbonAtoms);
+            System.out.println(getSmiles(tmpFragmenter.getIAtomContainer()));
         }
     }
 }
