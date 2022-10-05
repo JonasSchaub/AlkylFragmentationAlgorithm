@@ -30,7 +30,6 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.tools.CDKHydrogenAdder;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -186,7 +185,6 @@ public class AlkylFragmenter {
                 tmpChainList.get(tmpChainList.size()-1).add(i);
             }
         }
-        
         /*
         Next, all chains grow atom by atom at the same time; meaning, the first chain in tmpChainList adds its 
         neighbouring atom, then the second chain gets its adjacent atom added and so on. After all chains have added 
@@ -205,7 +203,6 @@ public class AlkylFragmenter {
                 this.fragmentsIndices = new ArrayList<>(this.branches.size());
             }
         }
-
         boolean tmpIsSearching = true;
         while (tmpIsSearching) {
             int tmpChainListIndex = 0;
@@ -273,155 +270,6 @@ public class AlkylFragmenter {
             revList.add(0,li);
         }
         return revList;
-    }
-
-    /**
-     * This method cuts linear molecule fragments from the this.branches list into chains of equal length which are
-     * then stored in the this.fragmentsIndices list. It does not cut multiple bonds and 
-     */
-    private void cutChains() {
-        /*
-        This method filters out all chain fragments that are smaller than minCut and stores them in the this.remainder
-        list.
-        Likewise, it stores
-        The first integer in each of these lists is the index of the atom that the chain is connected to.
-
-        At first the method iterates through the chain list that consists of linear chain fragments.
-         */
-        List<Integer> tmpBranchingIndices = new ArrayList<>(this.branches.size()-1);
-        if (this.branches.get(0).size() > 0) {
-            for (List<Integer> tmpBranch : this.branches) {
-                if (!tmpBranchingIndices.contains(tmpBranch.get(0))) {
-                    tmpBranchingIndices.add(tmpBranch.get(0));
-                }
-            }
-        }
-        int tmpBranchesIndex = 0;
-        while (tmpBranchesIndex < this.branches.size()) {
-            List<Integer> tmpBranchesItem = this.branches.get(tmpBranchesIndex);
-            int tmpIndex = 1;
-            int tmpBranchRest = 0;
-            /*
-            This while loop uses tmpIndex to iterate through the current tmpBranchesItem if it is not the last one in 
-            the this.branches list. The last tmpBranchesItem is the longest chain in the molecule. All the others' first 
-            integers are the indices of the atoms where the branches are connected to another molecule chain.
-            If isPreservingTertiaryQuaternaryCarbons is true and/or a multiple bond would be cut, the tmpBranchRest 
-            increases. Later the tmpBranchesRest will be used to remove the part of this branch, which needs be added
-            back to the connected branch.
-             */
-            while (tmpIndex - tmpBranchRest < 2 && tmpIndex < tmpBranchesItem.size()
-                    && tmpBranchesIndex < this.branches.size()-1) {
-                if (tmpIndex == 1 && isPreservingTertiaryQuaternaryCarbons ||
-                        this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get(tmpBranchRest)),
-                        this.molecule.getAtom(tmpBranchesItem.get(tmpIndex))).getOrder() != IBond.Order.SINGLE) {
-                    tmpBranchRest++;
-                }
-                tmpIndex++;
-            }
-            /*
-            If the rest of the current branch (without the part that needs to be added back to the connected branch) is
-            smaller than the minimum chain length (this.minCut) it means the branch is too small so that it will be
-            added to the connected branch completely.
-            If it is big enough though only the first part of the branch will be added back to the connected branch (to
-            preserve tertiary and quaternary carbon atoms and to not split multiple bonds.
-             */
-            if (tmpBranchesItem.size() - tmpBranchRest <= this.minCut && tmpBranchesItem.size() - tmpBranchRest > 0) {
-                this.remainder.add(tmpBranchesItem);
-            } else {
-                if (tmpBranchRest > 0 && tmpBranchesIndex < this.branches.size()-1) {
-                    this.remainder.add(tmpBranchesItem.subList(0, tmpBranchRest+1));
-                }
-                if (tmpBranchesIndex < this.branches.size()-1) {
-                    tmpBranchesItem = tmpBranchesItem.subList(tmpBranchRest+1, tmpBranchesItem.size());
-                }
-                if (this.minCut == 0 && this.maxCut == 0 && tmpBranchesItem.size() > 0) {
-                    this.fragmentsIndices.add(tmpBranchesItem);
-                }
-                /*
-                tmpIndexCutPosition stands for the index of the bond within the tmpBranchesItem. E.g. if it is 3, the
-                third bond will be broken. tmpIndexCutPosition is the index of the next cut position. Because multiple
-                bonds must not be split, there are two variables: tmpShift and tmpShift0. They shift or move the cut
-                for- or backward along the chain.
-                 */
-                int tmpIndexCutPosition;
-                int tmpIndexNextCutPosition;
-                int tmpShift = 0;
-                int tmpShift0 = 0;
-                if (this.maxCut > 0) {
-                    /*
-                    If there is a set maximum chain length (this.maxCut > 0) the following while loop cuts the current
-                    branch into chain fragments of equal length. In case a multiple bond would be cut, the current
-                    fragment will be made smaller to shift the split to the previous bond. If the resulting fragment is
-                    smaller than the minimum chain length the fragment will increase in size instead until the split
-                    will be at a single bond.
-                    All these fragments are then stored into the this.fragmentsIndices list.
-                     */
-                    tmpIndexCutPosition = tmpBranchesItem.size();
-                    tmpIndexNextCutPosition = tmpIndexCutPosition-this.maxCut;
-                    while (tmpIndexNextCutPosition + tmpShift >= 0) {
-                        tmpShift0 = tmpShift;
-                        boolean tmpIsReversedShift = false;
-                        if (tmpIndexNextCutPosition + tmpShift - 1 > 0) {
-                            while (tmpIndexNextCutPosition + tmpShift - 1 > 0 &&
-                                    (this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift)),
-                                    this.molecule.getAtom(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift-1))).getOrder() != IBond.Order.SINGLE ||
-                                    (tmpBranchingIndices.contains(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift)) ||
-                                            tmpBranchingIndices.contains(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift-1)))
-                                            && isPreservingTertiaryQuaternaryCarbons)) {
-                                if (tmpShift - tmpShift0 < this.maxCut - this.minCut && !tmpIsReversedShift) {
-                                    tmpShift++;
-                                }
-                                if (tmpShift - tmpShift0 >= this.maxCut - this.minCut && !tmpIsReversedShift) {
-                                    tmpIsReversedShift = true;
-                                    tmpShift = tmpShift0;
-                                }
-                                if (tmpIsReversedShift) {
-                                    tmpShift--;
-                                }
-                            }
-                        }
-                        this.fragmentsIndices.add(tmpBranchesItem.subList(tmpIndexNextCutPosition+tmpShift, tmpIndexCutPosition+tmpShift0));
-                        tmpIndexCutPosition -= this.maxCut;
-                        tmpIndexNextCutPosition -= this.maxCut;
-                    }
-                    /*
-                    If the
-                     */
-                    if (tmpIndexCutPosition+tmpShift % this.maxCut != 0) {
-                        if (tmpIndexCutPosition+tmpShift >= this.minCut) {
-                            this.fragmentsIndices.add(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift));
-                        } else {
-                            this.remainder.add(reverseList(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift + 1)));
-                        }
-                    }
-                } else if (this.maxCut == 0 && this.minCut > 0) {
-                    tmpIndexCutPosition = tmpBranchesItem.size();
-                    tmpIndexNextCutPosition = tmpIndexCutPosition-this.minCut;
-                    while (tmpIndexNextCutPosition + tmpShift >= 0) {
-                        tmpShift0 = tmpShift;
-                        if (tmpIndexNextCutPosition + tmpShift - 1 > 0) {
-                            while (tmpIndexNextCutPosition + tmpShift - 1 > 0 &&
-                                    (this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get(tmpIndexNextCutPosition + tmpShift)),
-                                    this.molecule.getAtom(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift-1))).getOrder() != IBond.Order.SINGLE ||
-                                    (tmpBranchingIndices.contains(tmpBranchesItem.get(tmpIndexNextCutPosition))) && isPreservingTertiaryQuaternaryCarbons)) {
-                                tmpShift--;
-                            }
-                        }
-                        this.fragmentsIndices.add(tmpBranchesItem.subList(tmpIndexNextCutPosition+tmpShift, tmpIndexCutPosition+tmpShift0));
-                        tmpIndexCutPosition -= this.minCut;
-                        tmpIndexNextCutPosition -= this.minCut;
-                    }
-                    if (tmpIndexCutPosition+tmpShift % this.minCut != 0) {
-                        if (tmpIndexCutPosition+tmpShift >= this.minCut) {
-                            this.fragmentsIndices.add(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift));
-                        } else {
-                            this.remainder.add(reverseList(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift + 1)));
-                        }
-                    }
-                }
-            }
-            this.branches.remove(tmpBranchesIndex);
-        }
     }
 
     /**
@@ -651,6 +499,11 @@ public class AlkylFragmenter {
             }
             tmpCurrentChain = new ArrayList<>();
         }
+        /*
+        The last part of this method is only used when tmpIsPreservingTertiaryQuaternaryCarbon is enabled. It iterates
+        through the tmpFragment list and looks for those fragments that belong together by checking if the neighbouring
+        atom of the last atom in the fragment list is also contained in another fragment list.
+         */
         while (tmpFragment.size() > 0) {
             List<Integer> tmpMergedFragments = tmpFragment.get(0);
             boolean tmpListHasChanged = true;
@@ -662,7 +515,7 @@ public class AlkylFragmenter {
                     if (this.connections[tmpCurrentFragment.get(tmpCurrentFragment.size()-1)].size() > 0 &&
                             tmpMergedFragments.contains(this.connections[tmpCurrentFragment.get(tmpCurrentFragment.size()-1)].get(0)) ||
                             this.connections[tmpFragment.get(0).get(tmpFragment.get(0).size()-1)].size() > 0 &&
-                            tmpCurrentFragment.contains(this.connections[tmpFragment.get(0).get(tmpFragment.get(0).size()-1)].get(0))) {
+                                    tmpCurrentFragment.contains(this.connections[tmpFragment.get(0).get(tmpFragment.get(0).size()-1)].get(0))) {
                         tmpMergedFragments.addAll(tmpCurrentFragment);
                         tmpFragment.remove(tmpCurrentFragment);
                         tmpFragmentIndex--;
@@ -675,7 +528,161 @@ public class AlkylFragmenter {
             cutChains();
             tmpFragment.remove(0);
         }
+    }
 
+    /**
+     * This method cuts linear molecule fragments from the this.branches list into chains of equal length which are
+     * then stored in the this.fragmentsIndices list. It does not cut multiple bonds and 
+     */
+    private void cutChains() {
+        /*
+        The tmpBranchingIndices list is used for the tmpIsPreservingTertiaryQuaternaryCarbon option. It contains the
+        indices of all branching atoms in a chain.
+         */
+        List<Integer> tmpBranchingIndices = new ArrayList<>(this.branches.size()-1);
+        if (this.branches.get(0).size() > 0) {
+            for (List<Integer> tmpBranch : this.branches) {
+                if (!tmpBranchingIndices.contains(tmpBranch.get(0))) {
+                    tmpBranchingIndices.add(tmpBranch.get(0));
+                }
+            }
+        }
+        int tmpBranchesIndex = 0;
+        while (tmpBranchesIndex < this.branches.size()) {
+            List<Integer> tmpBranchesItem = this.branches.get(tmpBranchesIndex);
+            int tmpIndex = 1;
+            int tmpBranchRest = 0;
+            /*
+            This while loop uses tmpIndex to iterate through the current tmpBranchesItem if it is not the last one in 
+            the this.branches list. The last tmpBranchesItem is the longest chain in the molecule. All the others' first 
+            integers are the indices of the atoms where the branches are connected to another molecule chain.
+            If isPreservingTertiaryQuaternaryCarbons is true and/or a multiple bond would be cut, the tmpBranchRest 
+            increases. Later the tmpBranchesRest will be used to remove the part of this branch, which needs be added
+            back to the connected branch.
+             */
+            while (tmpIndex - tmpBranchRest < 2 && tmpIndex < tmpBranchesItem.size()
+                    && tmpBranchesIndex < this.branches.size()-1) {
+                if (tmpIndex == 1 && isPreservingTertiaryQuaternaryCarbons ||
+                        this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get(tmpBranchRest)),
+                        this.molecule.getAtom(tmpBranchesItem.get(tmpIndex))).getOrder() != IBond.Order.SINGLE) {
+                    tmpBranchRest++;
+                }
+                tmpIndex++;
+            }
+            /*
+            If the rest of the current branch (without the part that needs to be added back to the connected branch) is
+            smaller than the minimum chain length (this.minCut) it means the branch is too small so that it will be
+            added to the connected branch completely.
+            If it is big enough though only the first part of the branch will be added back to the connected branch (to
+            preserve tertiary and quaternary carbon atoms and to not split multiple bonds.
+             */
+            if (tmpBranchesItem.size() - tmpBranchRest <= this.minCut && tmpBranchesItem.size() - tmpBranchRest > 0) {
+                this.remainder.add(tmpBranchesItem);
+            } else {
+                if (tmpBranchRest > 0 && tmpBranchesIndex < this.branches.size()-1) {
+                    this.remainder.add(tmpBranchesItem.subList(0, tmpBranchRest+1));
+                }
+                if (tmpBranchesIndex < this.branches.size()-1) {
+                    tmpBranchesItem = tmpBranchesItem.subList(tmpBranchRest+1, tmpBranchesItem.size());
+                }
+                if (this.minCut == 0 && this.maxCut == 0 && tmpBranchesItem.size() > 0) {
+                    this.fragmentsIndices.add(tmpBranchesItem);
+                }
+                /*
+                tmpIndexCutPosition stands for the index of the bond within the tmpBranchesItem. E.g. if it is 3, the
+                third bond will be broken. tmpIndexCutPosition is the index of the next cut position. Because multiple
+                bonds must not be split, there are two variables: tmpShift and tmpShift0. They shift or move the cut
+                for- or backward along the chain.
+                 */
+                int tmpIndexCutPosition;
+                int tmpIndexNextCutPosition;
+                int tmpShift = 0;
+                int tmpShift0 = 0;
+                if (this.maxCut > 0) {
+                    /*
+                    If there is a set maximum chain length (this.maxCut > 0) the following while loop cuts the current
+                    branch into chain fragments of equal length. In case a multiple bond would be cut, the current
+                    fragment will be made smaller to shift the split to the previous bond. If the resulting fragment is
+                    smaller than the minimum chain length the fragment will increase in size instead until the split
+                    will be at a single bond.
+                    All these fragments are then stored into the this.fragmentsIndices list.
+                     */
+                    tmpIndexCutPosition = tmpBranchesItem.size();
+                    tmpIndexNextCutPosition = tmpIndexCutPosition-this.maxCut;
+                    while (tmpIndexNextCutPosition + tmpShift >= 0) {
+                        tmpShift0 = tmpShift;
+                        boolean tmpIsReversedShift = false;
+                        while (tmpIndexNextCutPosition + tmpShift - 1 > 0 &&
+                                (this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift)),
+                                this.molecule.getAtom(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift-1))).getOrder() != IBond.Order.SINGLE ||
+                                (tmpBranchingIndices.contains(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift)) ||
+                                        tmpBranchingIndices.contains(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift-1)))
+                                        && isPreservingTertiaryQuaternaryCarbons)) {
+                            /*
+                            The conditions are: Continue as long as 1. tmpIndexNextCutPosition is within the chain
+                            length range, 2. there is a multiple bond between the current and the next atom, or 3. the
+                            current atom is next to a branching when isPreservingTertiaryQuaternaryCarbons is enabled.
+                             */
+                            if (tmpShift - tmpShift0 < this.maxCut - this.minCut && !tmpIsReversedShift) {
+                                tmpShift++;
+                            }
+                            if (tmpShift - tmpShift0 >= this.maxCut - this.minCut && !tmpIsReversedShift) {
+                                tmpIsReversedShift = true;
+                                tmpShift = tmpShift0;
+                            }
+                            if (tmpIsReversedShift) {
+                                tmpShift--;
+                            }
+                        }
+                        /*
+                        After having determined the right tmpShift value, the embedded fragment piece is added to the
+                        this.fragmentsIndices list.
+                         */
+                        this.fragmentsIndices.add(tmpBranchesItem.subList(tmpIndexNextCutPosition+tmpShift, tmpIndexCutPosition+tmpShift0));
+                        tmpIndexCutPosition -= this.maxCut;
+                        tmpIndexNextCutPosition -= this.maxCut;
+                    }
+                    /*
+                    If the chain cannot be divided evenly without a remainder, what is left is either also added to
+                    this.fragmentsIndices or to this.remainders if it is smaller than this.minCut.
+                     */
+                    if (tmpIndexCutPosition+tmpShift % this.maxCut != 0) {
+                        if (tmpIndexCutPosition+tmpShift >= this.minCut) {
+                            this.fragmentsIndices.add(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift));
+                        } else {
+                            this.remainder.add(reverseList(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift + 1)));
+                        }
+                    }
+                } else if (this.maxCut == 0 && this.minCut > 0) {
+                    /*
+                    If there is only a this.minCut, the whole tmpShift finding process becomes simpler. It only shifts
+                    into one direction. But otherwise this part of the method is the same as for the this.maxCut part.
+                     */
+                    tmpIndexCutPosition = tmpBranchesItem.size();
+                    tmpIndexNextCutPosition = tmpIndexCutPosition-this.minCut;
+                    while (tmpIndexNextCutPosition + tmpShift >= 0) {
+                        tmpShift0 = tmpShift;
+                        while (tmpIndexNextCutPosition + tmpShift - 1 > 0 &&
+                                (this.molecule.getBond(this.molecule.getAtom(tmpBranchesItem.get(tmpIndexNextCutPosition + tmpShift)),
+                                this.molecule.getAtom(tmpBranchesItem.get(tmpIndexNextCutPosition+tmpShift-1))).getOrder() != IBond.Order.SINGLE ||
+                                (tmpBranchingIndices.contains(tmpBranchesItem.get(tmpIndexNextCutPosition))) && isPreservingTertiaryQuaternaryCarbons)) {
+                            tmpShift--;
+                        }
+                        this.fragmentsIndices.add(tmpBranchesItem.subList(tmpIndexNextCutPosition+tmpShift, tmpIndexCutPosition+tmpShift0));
+                        tmpIndexCutPosition -= this.minCut;
+                        tmpIndexNextCutPosition -= this.minCut;
+                    }
+                    if (tmpIndexCutPosition+tmpShift % this.minCut != 0) {
+                        if (tmpIndexCutPosition+tmpShift >= this.minCut) {
+                            this.fragmentsIndices.add(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift));
+                        } else {
+                            this.remainder.add(reverseList(tmpBranchesItem.subList(0, tmpIndexCutPosition + tmpShift + 1)));
+                        }
+                    }
+                }
+            }
+            this.branches.remove(tmpBranchesIndex);
+        }
     }
 
     /**
